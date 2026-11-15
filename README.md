@@ -1,73 +1,44 @@
-# Welcome to your Lovable project
+# ConsoGab — L'économie gabonaise à portée de main
 
-## Project info
+Application web et mobile-first dédiée à la découverte, à la promotion et à la mise en relation avec les commerces, artisans et prestataires du Gabon.
 
-**URL**: https://lovable.dev/projects/80d65093-c000-4ec9-a629-a9b7b17e0615
+## Fonctionnalités principales
 
-## How can I edit this code?
+- **Espace Consommateur** :
+  - Recherche unifiée (entreprises, catalogues, produits) et filtrage par les 15 secteurs d'activité
+  - Carte interactive MapLibre GL et géolocalisation adaptative (rayon de 2 km à 50 km)
+  - Consultation des catalogues publics, fiches produits en FCFA et panier local
+  - Annonces éphémères 24h (*Stories*) et classements des entreprises
+  - Mode d'exploration immédiate (*« Se connecter sans authentification »*) avec données de démonstration résilientes
+- **Espace Commerçant (Mode Business)** :
+  - Gestion multi-entreprises depuis un compte unique
+  - Création et publication de catalogues produits/services et de stories 24h
+  - Messagerie directe B2C/B2B et intégration WhatsApp
 
-There are several ways of editing your application.
+## Stack technique
 
-**Use Lovable**
+- **Frontend** : React 18, TypeScript, Vite, Tailwind CSS, Radix UI / Shadcn UI, TanStack Query
+- **Cartographie** : MapLibre GL
+- **Backend & Base de données** : Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **Tests** : Vitest & Testing Library
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/80d65093-c000-4ec9-a629-a9b7b17e0615) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Installation et démarrage local
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# 1. Installer les dépendances
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 2. Configurer les variables d'environnement
+cp .env.example .env
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 3. Lancer le serveur de développement (http://localhost:8080)
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Scripts disponibles
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/80d65093-c000-4ec9-a629-a9b7b17e0615) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- `npm run dev` : Serveur de développement Vite
+- `npm run build` : Build de production
+- `npm run test:run` : Exécution de la suite de tests unitaires Vitest
+- `npm run type-check` : Vérification statique TypeScript (`tsc --noEmit`)
+- `npm run lint` : Analyse statique ESLint

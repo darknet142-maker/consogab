@@ -833,4 +833,4 @@ Le système de messagerie a une **architecture solide** sous-jacente (base de do
 ---
 
 *Rapport généré automatiquement par analyse du codebase*
-*Lovable AI - System Analysis v1.0*
+*ConsoGab - System Analysis v1.0*
