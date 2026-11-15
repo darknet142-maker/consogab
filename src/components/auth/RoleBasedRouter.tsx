@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
+import { GUEST_STORAGE_KEY, GUEST_USER_ID } from '@/features/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { createDomainLogger } from '@/lib/logger';
 
@@ -28,6 +29,19 @@ export const RoleBasedRouter = ({ children }: RoleBasedRouterProps) => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
+
+      let isPrototype = false;
+      try {
+        isPrototype = localStorage.getItem(GUEST_STORAGE_KEY) === 'true';
+      } catch {
+        isPrototype = false;
+      }
+
+      if (user.id === GUEST_USER_ID || isPrototype) {
+        setUserProfile({ role: 'consumer', pseudo: 'Invité ConsoGab' });
+        setProfileLoading(false);
+        return;
+      }
       
       setProfileLoading(true);
       try {
@@ -68,7 +82,12 @@ export const RoleBasedRouter = ({ children }: RoleBasedRouterProps) => {
   // Redirection vers auth si pas connecté (sauf mode prototype)
   useEffect(() => {
     if (!authLoading && !user) {
-      const isPrototype = localStorage.getItem('gb_prototype_access') === 'true';
+      let isPrototype = false;
+      try {
+        isPrototype = localStorage.getItem(GUEST_STORAGE_KEY) === 'true';
+      } catch {
+        isPrototype = false;
+      }
       if (isPrototype) return;
 
       const currentPath = location.pathname;
@@ -99,6 +118,18 @@ export const RoleBasedRouter = ({ children }: RoleBasedRouterProps) => {
 
   const redirectToLastUsedProfile = async () => {
     if (!user) return;
+
+    let isPrototype = false;
+    try {
+      isPrototype = localStorage.getItem(GUEST_STORAGE_KEY) === 'true';
+    } catch {
+      isPrototype = false;
+    }
+
+    if (user.id === GUEST_USER_ID || isPrototype) {
+      navigate('/consumer/home', { replace: true });
+      return;
+    }
 
     try {
       // 1. Vérifier si l'utilisateur a des business

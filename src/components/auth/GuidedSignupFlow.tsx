@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, User, Building, Mail, Phone, Lock, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Building, Mail, Phone, Lock, Globe, UserCheck } from "lucide-react";
 import gabomaLogo from "@/assets/gaboma-logo.png";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -44,7 +45,8 @@ interface GuidedSignupFlowProps {
 }
 
 export const GuidedSignupFlow = ({ onComplete, onBack }: GuidedSignupFlowProps) => {
-  const { signUp } = useAuth();
+  const { signUp, signInWithoutAuth } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<SignupStep>('basic-info');
   const [isLoading, setIsLoading] = useState(false);
   const [signupData, setSignupData] = useState<Partial<SignupData>>({ accountType: 'consumer' });
@@ -369,7 +371,7 @@ export const GuidedSignupFlow = ({ onComplete, onBack }: GuidedSignupFlowProps) 
 
           </CardContent>
           
-          <div className="border-t p-4 flex-shrink-0 bg-card">
+          <div className="border-t p-4 flex-shrink-0 bg-card space-y-3">
             <div className="flex justify-between">
               <Button
                 type="button"
@@ -396,6 +398,19 @@ export const GuidedSignupFlow = ({ onComplete, onBack }: GuidedSignupFlowProps) 
                 )}
               </Button>
             </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full h-11 gap-2 text-sm font-medium"
+              onClick={() => {
+                signInWithoutAuth();
+                navigate('/consumer/home', { replace: true });
+              }}
+            >
+              <UserCheck className="h-4 w-4" />
+              Se connecter sans authentification
+            </Button>
           </div>
         </Card>
       </div>

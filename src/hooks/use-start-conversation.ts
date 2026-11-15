@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
+import { GUEST_USER_ID } from '@/features/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { createDomainLogger } from '@/lib/logger';
+import { getOrCreateDemoBusinessConversation } from '@/mocks/consoGabDemoData';
 
 const logger = createDomainLogger('StartConversation');
 
@@ -56,6 +58,12 @@ export const useStartConversation = () => {
       return;
     }
 
+    if (user.id === GUEST_USER_ID) {
+      const demoConv = getOrCreateDemoBusinessConversation(businessId, user.id);
+      navigate(`/messaging/${demoConv.id}`);
+      return;
+    }
+
     try {
       logger.info('Starting business conversation', { businessId });
 
@@ -75,8 +83,9 @@ export const useStartConversation = () => {
       // Navigation directe vers la conversation
       navigate(`/messaging/${conversationId}`);
     } catch (error) {
-      console.error('Error starting business conversation:', error);
-      toast.error('Impossible de contacter cette entreprise');
+      console.error('Error starting business conversation, using local fallback:', error);
+      const demoConv = getOrCreateDemoBusinessConversation(businessId, user.id);
+      navigate(`/messaging/${demoConv.id}`);
     }
   };
 

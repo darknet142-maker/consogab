@@ -21,19 +21,39 @@ serve(async (req) => {
     // Get user from JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Authorization header missing');
+      return new Response(
+        JSON.stringify({ error: 'Authorization header missing' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Validate request body with Zod
     const validatedData = await validateRequest(req, createConversationSchema);
     const { origin_type, origin_id, participants, title } = validatedData;
+
+    // Security check: the authenticated caller MUST be one of the participants
+    const callerParticipant = participants.find((p) => p.user_id === user.id);
+    if (!callerParticipant) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: caller must be a participant of the conversation' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prevent deduplication exploits: ensure unique user_ids in participants
+    const uniqueParticipants = Array.from(
+      new Map(participants.map((p) => [p.user_id, p])).values()
+    );
 
     console.log('Creating conversation:', { origin_type, origin_id, title, user_id: user.id });
 
@@ -56,11 +76,11 @@ serve(async (req) => {
 
     console.log('Conversation created:', conversation);
 
-    // Add participants
-    const participantInserts = participants.map((p: any) => ({
+    // Add participants (only caller can claim their own entry; other participants default to 'member'/'consumer')
+    const participantInserts = uniqueParticipants.map((p) => ({
       conversation_id: conversation.id,
       user_id: p.user_id,
-      role: p.role || 'consumer'
+      role: p.user_id === user.id ? (p.role || 'consumer') : (p.role === 'business' ? 'business' : 'consumer')
     }));
 
     const { error: participantError } = await supabaseClient

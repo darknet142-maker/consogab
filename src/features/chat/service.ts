@@ -1,5 +1,25 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Conversation, Message, CreateMessageDTO, MessageType } from './types';
+import { Conversation, Message, CreateMessageDTO } from './types';
+import {
+  getDemoConversations,
+  getDemoMessages,
+  sendDemoMessage,
+  markDemoConversationRead,
+  getOrCreateDemoBusinessConversation,
+  getDemoConversationById,
+} from '@/mocks/consoGabDemoData';
+
+const GUEST_USER_ID = 'guest-prototype-user';
+const GUEST_STORAGE_KEY = 'gb_prototype_access';
+
+function isGuestUser(userId?: string): boolean {
+  if (userId === GUEST_USER_ID) return true;
+  try {
+    return localStorage.getItem(GUEST_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 // Helper pour les appels RPC non typés
 const rpc = (name: string, params?: any) => (supabase as any).rpc(name, params);
@@ -7,6 +27,9 @@ const rpc = (name: string, params?: any) => (supabase as any).rpc(name, params);
 // --- Conversations ---
 
 export async function fetchConversations(userId: string): Promise<Conversation[]> {
+  if (isGuestUser(userId)) {
+    return getDemoConversations(userId || GUEST_USER_ID);
+  }
   try {
     const { data, error } = await rpc('get_conversations_for_user', { p_user_id: userId });
 
@@ -57,6 +80,9 @@ export async function fetchConversations(userId: string): Promise<Conversation[]
 }
 
 export async function fetchMessages(conversationId: string, page = 0, limit = 50): Promise<Message[]> {
+  if (isGuestUser() || conversationId.startsWith('conv-demo-')) {
+    return page === 0 ? getDemoMessages(conversationId) : [];
+  }
   const from = page * limit;
   const to = from + limit - 1;
 
@@ -85,6 +111,9 @@ export async function fetchMessages(conversationId: string, page = 0, limit = 50
 }
 
 export async function sendMessage(dto: CreateMessageDTO): Promise<Message> {
+  if (isGuestUser() || dto.conversation_id.startsWith('conv-demo-')) {
+    return sendDemoMessage(dto, GUEST_USER_ID);
+  }
   const { data: userData } = await supabase.auth.getUser();
   
   const { data, error } = await (supabase as any)
@@ -114,6 +143,10 @@ export async function sendMessage(dto: CreateMessageDTO): Promise<Message> {
 }
 
 export async function markAsRead(conversationId: string, userId: string): Promise<void> {
+  if (isGuestUser(userId) || conversationId.startsWith('conv-demo-')) {
+    markDemoConversationRead(conversationId, userId || GUEST_USER_ID);
+    return;
+  }
   await rpc('mark_conversation_read', {
     p_conversation_id: conversationId,
     p_user_id: userId
@@ -121,19 +154,29 @@ export async function markAsRead(conversationId: string, userId: string): Promis
 }
 
 export async function getOrCreateBusinessConversation(businessId: string, userId: string): Promise<Conversation> {
-  // Use the RPC if available, or manual logic
-  const { data: conversationId, error } = await rpc('get_or_create_business_conversation', {
-    p_business_id: businessId,
-    p_user_id: userId
-  });
+  if (isGuestUser(userId)) {
+    return getOrCreateDemoBusinessConversation(businessId, userId || GUEST_USER_ID);
+  }
+  try {
+    // Use the RPC if available, or manual logic
+    const { data: conversationId, error } = await rpc('get_or_create_business_conversation', {
+      p_business_id: businessId,
+      p_user_id: userId
+    });
 
-  if (error) throw error;
+    if (error) throw error;
 
-  // Fetch the full conversation details
-  return fetchConversationById(conversationId as string);
+    // Fetch the full conversation details
+    return fetchConversationById(conversationId as string);
+  } catch {
+    return getOrCreateDemoBusinessConversation(businessId, userId || GUEST_USER_ID);
+  }
 }
 
 export async function fetchConversationById(conversationId: string): Promise<Conversation> {
+  if (isGuestUser() || conversationId.startsWith('conv-demo-')) {
+    return getDemoConversationById(conversationId);
+  }
   const { data: conv, error } = await (supabase as any)
     .from('conversations')
     .select(`

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getDemoProductById } from '@/mocks/consoGabDemoData';
 
 export interface ProductWithDetails {
   id: string;
@@ -32,17 +33,23 @@ export const useProduct = (productId: string | undefined) => {
     queryFn: async () => {
       if (!productId) throw new Error('Product ID is required');
 
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          business:business_profiles(*)
-        `)
-        .eq('id', productId)
-        .single();
+      const demoMatch = getDemoProductById(productId);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            *,
+            business:business_profiles(*)
+          `)
+          .eq('id', productId)
+          .single();
 
-      if (error) throw error;
-      return data as ProductWithDetails;
+        if (error) throw error;
+        return data as ProductWithDetails;
+      } catch (err) {
+        if (demoMatch) return demoMatch;
+        throw err;
+      }
     },
     enabled: !!productId,
   });

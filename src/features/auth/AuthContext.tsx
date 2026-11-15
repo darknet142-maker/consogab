@@ -1,10 +1,40 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { AuthContextType, AuthState, UserSignUpData, SignUpResult, SignInResult, ResetPasswordResult } from './types';
+import { AuthContextType, AuthState, UserProfile, UserSignUpData, SignUpResult, SignInResult, ResetPasswordResult } from './types';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { toast } from 'sonner';
+
+export const GUEST_STORAGE_KEY = 'gb_prototype_access';
+export const GUEST_USER_ID = 'guest-prototype-user';
+
+const createGuestSession = (): { guestUser: User; guestProfile: UserProfile } => {
+  const now = new Date().toISOString();
+  const guestUser: User = {
+    id: GUEST_USER_ID,
+    email: 'invite@consogab.ga',
+    app_metadata: {},
+    user_metadata: {
+      pseudo: 'Invité ConsoGab',
+      role: 'consumer'
+    },
+    aud: 'authenticated',
+    created_at: now
+  };
+
+  const guestProfile: UserProfile = {
+    id: 'guest-profile',
+    user_id: GUEST_USER_ID,
+    role: 'consumer',
+    pseudo: 'Invité ConsoGab',
+    visibility: 'public',
+    created_at: now,
+    updated_at: now
+  };
+
+  return { guestUser, guestProfile };
+};
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -13,15 +43,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: null,
     session: null,
     profile: null,
+    isGuest: false,
     loading: true,
     initialized: false
   });
 
   const refreshProfile = useCallback(async () => {
-    if (!state.user) return;
+    if (!state.user || state.isGuest || state.user.id === GUEST_USER_ID) return;
     const profile = await AuthService.getProfile(state.user.id);
     setState(prev => ({ ...prev, profile }));
-  }, [state.user]);
+  }, [state.user, state.isGuest]);
+
+  const signInWithoutAuth = useCallback(() => {
+    try {
+      localStorage.setItem(GUEST_STORAGE_KEY, 'true');
+    } catch {
+      // Ignore storage errors
+    }
+    const { guestUser, guestProfile } = createGuestSession();
+    setState({
+      user: guestUser,
+      session: null,
+      profile: guestProfile,
+      isGuest: true,
+      loading: false,
+      initialized: true
+    });
+    toast.success('Connexion sans authentification activée');
+  }, []);
 
   // Initialize Auth
   useEffect(() => {
@@ -29,6 +78,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
+        let isGuestAccess = false;
+        try {
+          isGuestAccess = localStorage.getItem(GUEST_STORAGE_KEY) === 'true';
+        } catch {
+          isGuestAccess = false;
+        }
+
+        if (isGuestAccess) {
+          const { guestUser, guestProfile } = createGuestSession();
+          if (mounted) {
+            setState({
+              user: guestUser,
+              session: null,
+              profile: guestProfile,
+              isGuest: true,
+              loading: false,
+              initialized: true
+            });
+          }
+          return;
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         
         let profile = null;
@@ -41,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             user: session?.user ?? null,
             session,
             profile,
+            isGuest: false,
             loading: false,
             initialized: true
           });
@@ -67,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user: null,
           session: null,
           profile: null,
+          isGuest: false,
           loading: false,
           initialized: true
         });
@@ -74,11 +147,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        try {
+          localStorage.removeItem(GUEST_STORAGE_KEY);
+        } catch {
+          // Ignore storage errors
+        }
         // Update state immediately with user info
         setState(prev => ({
           ...prev,
           user,
           session,
+          isGuest: false,
           loading: false,
           initialized: true
         }));
@@ -212,6 +291,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      try {
+        localStorage.removeItem(GUEST_STORAGE_KEY);
+        localStorage.removeItem('consogab_guest_profile_mode_v1');
+      } catch {
+        // Ignore storage errors
+      }
+
+      if (state.isGuest || state.user?.id === GUEST_USER_ID) {
+        setState({
+          user: null,
+          session: null,
+          profile: null,
+          isGuest: false,
+          loading: false,
+          initialized: true
+        });
+        toast.success('Déconnexion réussie');
+        window.location.href = '/auth';
+        return;
+      }
+
       const currentUser = state.user;
       
       // Log logout before signing out
@@ -260,6 +360,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signIn,
       signUp,
       signOut,
+      signInWithoutAuth,
       resetPassword,
       refreshProfile
     }}>

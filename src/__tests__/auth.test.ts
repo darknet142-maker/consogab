@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AuthService, signUpSchema, signInSchema } from '@/services/auth.service';
+import { AuthService, signUpSchema, signInSchema } from '@/features/auth/auth.service';
 import { supabase } from '@/integrations/supabase/client';
 
 // Mock Supabase

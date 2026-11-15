@@ -94,6 +94,27 @@ export const LazyCategoryPage = lazyLoad(
   () => import('@/pages/CategoryPage')
 );
 
+// Pages Détails & Carte (lourdes : MapLibre, carrousels, etc.)
+export const LazyBusinessDetailPage = lazyLoad(
+  () => import('@/pages/BusinessDetailPage').then((m) => ({ default: m.BusinessDetailPage }))
+);
+
+export const LazyProductDetailPage = lazyLoad(
+  () => import('@/pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage }))
+);
+
+export const LazyMapPage = lazyLoad(
+  () => import('@/pages/MapPage').then((m) => ({ default: m.MapPage }))
+);
+
+export const LazyProfilePage = lazyLoad(
+  () => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+);
+
+export const LazyRankingsPage = lazyLoad(
+  () => import('@/pages/RankingsPage').then((m) => ({ default: m.RankingsPage }))
+);
+
 /**
  * ============================================
  * PREFETCH STRATEGIES

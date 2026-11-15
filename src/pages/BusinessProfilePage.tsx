@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { useProfileMode } from "@/hooks/use-profile-mode";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { GUEST_USER_ID } from "@/features/auth/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getDemoBusinessById } from "@/mocks/consoGabDemoData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,21 @@ export const BusinessProfilePage = () => {
         if (!user) {
           toast.error("Vous devez être connecté");
           navigate('/auth');
+          return;
+        }
+
+        // En mode sans authentification, autoriser la gestion des entreprises de démo possédées par l'invité
+        if (user.id === GUEST_USER_ID) {
+          const demoBusiness = getDemoBusinessById(businessId);
+          if (demoBusiness && demoBusiness.user_id === GUEST_USER_ID) {
+            setBusinessProfile(demoBusiness);
+            if (currentMode !== 'business' || currentBusinessId !== businessId) {
+              switchMode('business', businessId);
+            }
+            return;
+          }
+          toast.error("Vous n'avez pas accès à cette entreprise");
+          navigate('/entreprises');
           return;
         }
 

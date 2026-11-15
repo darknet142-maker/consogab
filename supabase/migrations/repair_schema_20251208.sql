@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.business_profiles (
   
   business_name TEXT NOT NULL,
   description TEXT,
+  business_category TEXT,
   category TEXT,
   
   -- Contact & Location
@@ -47,10 +48,13 @@ CREATE TABLE IF NOT EXISTS public.business_profiles (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
+-- Ensure business_category column exists on existing installations
+ALTER TABLE public.business_profiles ADD COLUMN IF NOT EXISTS business_category TEXT;
+
 -- Index for PostGIS location
 CREATE INDEX IF NOT EXISTS idx_business_profiles_location ON public.business_profiles USING GIST (location);
 CREATE INDEX IF NOT EXISTS idx_business_profiles_user_id ON public.business_profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_business_profiles_category ON public.business_profiles(category);
+CREATE INDEX IF NOT EXISTS idx_business_profiles_category ON public.business_profiles(business_category);
 
 -- RLS for business_profiles
 ALTER TABLE public.business_profiles ENABLE ROW LEVEL SECURITY;
@@ -175,7 +179,7 @@ BEGIN
   SELECT 
     bp.id,
     bp.business_name,
-    bp.business_category::text,
+    COALESCE(bp.business_category::text, bp.category::text, 'services') as business_category,
     bp.description,
     bp.address,
     bp.city,

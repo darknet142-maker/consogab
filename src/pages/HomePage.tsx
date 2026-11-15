@@ -118,20 +118,33 @@ export const HomePage = ({
         
         {/* Barre de recherche unifiée */}
         <div className="p-4 shadow-sm border-border rounded-3xl bg-inherit py-0 px-0">
-          <UnifiedSearchBar onSelect={result => {
-            if (result.type === 'business') {
-              navigate(`/business/${result.businessId}`);
-            } else if (result.type === 'product') {
-              navigate(`/product/${result.id}`);
-            }
-          }} placeholder="Que recherchez-vous ?" variant="minimal" size="lg" currentLocation={userLocation} showFilters={false} showResults={false} />
+          <UnifiedSearchBar
+            onSelect={result => {
+              if (result.type === 'product') {
+                navigate(`/product/${result.id}`);
+              } else if (result.businessId) {
+                navigate(`/business/${result.businessId}`);
+              }
+            }}
+            placeholder="Que recherchez-vous ?"
+            variant="minimal"
+            size="lg"
+            currentLocation={userLocation}
+            showFilters={true}
+            showResults={true}
+          />
         </div>
 
         {/* Stories/Annonces éphémères 24h */}
         <StoriesCarousel 
           title="🔥 Annonces du jour" 
           limit={10}
-          onStoryClick={(id) => console.log('Story clicked:', id)}
+          showViewAll={false}
+          onStoryClick={(_storyId, businessId) => {
+            if (businessId) {
+              navigate(`/business/${businessId}`);
+            }
+          }}
         />
 
         {/* Catégories rapides */}

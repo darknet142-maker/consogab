@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getDemoBusinesses } from '@/mocks/consoGabDemoData';
 
 export interface RealBusiness {
   id: string;
@@ -27,149 +28,100 @@ export const useRealBusinesses = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchBusinesses = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchBusinesses = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const { data, error: fetchError } = await supabase
-          .from('business_profiles')
-          .select(`
-            id,
-            business_name,
-            business_category,
-            description,
-            address,
-            city,
-            phone,
-            email,
-            website,
-            logo_url,
-            cover_image_url,
-            carousel_images,
-            is_verified,
-            is_active,
-            is_sleeping,
-            latitude,
-            longitude,
-            created_at
-          `)
-          .eq('is_active', true)
-          .eq('is_sleeping', false)
-          .order('created_at', { ascending: false });
+      const { data, error: fetchError } = await supabase
+        .from('business_profiles')
+        .select(`
+          id,
+          business_name,
+          business_category,
+          description,
+          address,
+          city,
+          phone,
+          email,
+          website,
+          logo_url,
+          cover_image_url,
+          carousel_images,
+          is_verified,
+          is_active,
+          is_sleeping,
+          latitude,
+          longitude,
+          created_at
+        `)
+        .eq('is_active', true)
+        .eq('is_sleeping', false)
+        .order('created_at', { ascending: false });
 
-        if (fetchError) {
-          throw fetchError;
-        }
-
-        const transformedBusinesses: RealBusiness[] = (data || []).map(business => ({
-          id: business.id,
-          name: business.business_name,
-          category: business.business_category,
-          description: business.description,
-          address: business.address,
-          city: business.city,
-          phone: business.phone,
-          email: business.email,
-          website: business.website,
-          logo_url: business.logo_url,
-          cover_image_url: business.cover_image_url,
-          carousel_images: Array.isArray(business.carousel_images) ? business.carousel_images as string[] : [],
-          is_verified: business.is_verified,
-          is_active: business.is_active,
-          is_sleeping: business.is_sleeping,
-          latitude: business.latitude,
-          longitude: business.longitude,
-          created_at: business.created_at
-        }));
-
-        setBusinesses(transformedBusinesses);
-      } catch (err) {
-        console.error('Error fetching businesses:', err);
-        setError('Erreur lors du chargement des entreprises');
-      } finally {
-        setLoading(false);
+      if (fetchError) {
+        throw fetchError;
       }
-    };
 
-    fetchBusinesses();
+      const transformedBusinesses: RealBusiness[] = (data || []).map(business => ({
+        id: business.id,
+        name: business.business_name,
+        category: business.business_category,
+        description: business.description,
+        address: business.address,
+        city: business.city,
+        phone: business.phone,
+        email: business.email,
+        website: business.website,
+        logo_url: business.logo_url,
+        cover_image_url: business.cover_image_url,
+        carousel_images: Array.isArray(business.carousel_images) ? business.carousel_images as string[] : [],
+        is_verified: business.is_verified,
+        is_active: business.is_active,
+        is_sleeping: business.is_sleeping,
+        latitude: business.latitude,
+        longitude: business.longitude,
+        created_at: business.created_at
+      }));
+
+      setBusinesses(transformedBusinesses);
+    } catch (err) {
+      console.error('Error fetching businesses, falling back to demo data:', err);
+      const demoFallback: RealBusiness[] = getDemoBusinesses().map(business => ({
+        id: business.id,
+        name: business.business_name,
+        category: business.business_category,
+        description: business.description,
+        address: business.address,
+        city: business.city,
+        phone: business.phone,
+        email: business.email,
+        website: business.website,
+        logo_url: business.logo_url,
+        cover_image_url: business.cover_image_url,
+        carousel_images: business.carousel_images,
+        is_verified: business.is_verified,
+        is_active: business.is_active,
+        is_sleeping: business.is_sleeping,
+        latitude: business.latitude,
+        longitude: business.longitude,
+        created_at: business.created_at
+      }));
+      setBusinesses(demoFallback);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const refreshBusinesses = () => {
-    setLoading(true);
-    // Re-trigger useEffect
-    const fetchBusinesses = async () => {
-      try {
-        setError(null);
-
-        const { data, error: fetchError } = await supabase
-          .from('business_profiles')
-          .select(`
-            id,
-            business_name,
-            business_category,
-            description,
-            address,
-            city,
-            phone,
-            email,
-            website,
-            logo_url,
-            cover_image_url,
-            carousel_images,
-            is_verified,
-            is_active,
-            is_sleeping,
-            latitude,
-            longitude,
-            created_at
-          `)
-          .eq('is_active', true)
-          .eq('is_sleeping', false)
-          .order('created_at', { ascending: false });
-
-        if (fetchError) {
-          throw fetchError;
-        }
-
-        const transformedBusinesses: RealBusiness[] = (data || []).map(business => ({
-          id: business.id,
-          name: business.business_name,
-          category: business.business_category,
-          description: business.description,
-          address: business.address,
-          city: business.city,
-          phone: business.phone,
-          email: business.email,
-          website: business.website,
-          logo_url: business.logo_url,
-          cover_image_url: business.cover_image_url,
-          carousel_images: Array.isArray(business.carousel_images) ? business.carousel_images as string[] : [],
-          is_verified: business.is_verified,
-          is_active: business.is_active,
-          is_sleeping: business.is_sleeping,
-          latitude: business.latitude,
-          longitude: business.longitude,
-          created_at: business.created_at
-        }));
-
-        setBusinesses(transformedBusinesses);
-      } catch (err) {
-        console.error('Error fetching businesses:', err);
-        setError('Erreur lors du chargement des entreprises');
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchBusinesses();
-  };
+  }, [fetchBusinesses]);
 
   return {
     businesses,
     loading,
     error,
-    refreshBusinesses
+    refreshBusinesses: fetchBusinesses
   };
 };

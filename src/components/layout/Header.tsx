@@ -30,6 +30,7 @@ export const Header = ({
               variant="ghost" 
               size={backLabel ? "sm" : "icon"} 
               onClick={onBack} 
+              aria-label={backLabel || "Retour"}
               className="text-white hover:bg-white/20 transition-colors gap-1"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -43,7 +44,7 @@ export const Header = ({
           }} className="font-lalezar text-white font-normal text-2xl">CONS</span>
                 <img src={gabomaLogo} alt="ConsoGab" style={{
             margin: '0 0.1em'
-          }} className="w-8 max-h-80 max-h-8 " />
+          }} className="w-8 max-h-8" />
                 <span style={{
             marginLeft: '0.1em'
           }} className="font-lalezar text-white font-normal text-2xl">GAB</span>
@@ -58,12 +59,27 @@ export const Header = ({
           <ThemeToggle />
           
           {/* Bouton localisation */}
-          
+          {onLocationClick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onLocationClick}
+              aria-label="Voir la carte"
+              className="text-white hover:bg-white/20 transition-colors"
+            >
+              <MapPin className="w-5 h-5" />
+            </Button>
+          )}
           
           {/* Bouton messages */}
-          <Button variant="ghost" size="icon" onClick={onMessageClick} className="text-white hover:bg-white/20 transition-colors relative" title="Messages">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMessageClick}
+            aria-label="Messagerie"
+            className="text-white hover:bg-white/20 transition-colors relative"
+          >
             <MessageCircle className="w-5 h-5" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-secondary rounded-full" />
           </Button>
 
           {/* Notifications */}

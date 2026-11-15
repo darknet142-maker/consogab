@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { GUEST_USER_ID } from "@/features/auth/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Star, MapPin, Trophy, QrCode, Shield, History, Award, Bell, Filter, TrendingUp, Trash2, LogOut, Building2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -89,8 +90,9 @@ export const ProfilePage = ({
 }: ProfilePageProps) => {
   // Récupérer l'onglet depuis l'URL ou utiliser "overview" par défaut
   const urlParams = new URLSearchParams(window.location.search);
-  const tabFromUrl = urlParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
+  const rawTabFromUrl = urlParams.get('tab');
+  const normalizedTab = rawTabFromUrl === 'entreprises' ? 'businesses' : rawTabFromUrl;
+  const [activeTab, setActiveTab] = useState(normalizedTab || "overview");
   const [activityFilter, setActivityFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -123,47 +125,66 @@ export const ProfilePage = ({
   });
   
   const fetchUserProfile = async () => {
-    if (!user) {
+    if (!user || user.id === GUEST_USER_ID) {
+      setUserProfile({
+        name: "Invité ConsoGab",
+        email: "invite@consogab.ga",
+        phone: "",
+        joinDate: "Novembre 2026",
+        userType: "client",
+        points: 1250,
+        level: "Mode Sans Authentification",
+        scansCount: 12,
+        reviewsCount: 5,
+        favoritesCount: 3,
+        pseudo: "invite_consogab",
+        role: "consumer"
+      });
       setIsLoading(false);
       return;
     }
     try {
       setIsLoading(true);
       
-      // Utiliser UNIQUEMENT la table profiles comme source unique de vérité
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Récupérer les données depuis profiles et user_profiles pour garantir la cohérence
+      const [{ data: profileData, error: profileError }, { data: userProfileRow }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle(),
+      ]);
 
       if (profileError) {
         console.error('Erreur récupération profil:', profileError);
-        setIsLoading(false);
-        return;
       }
 
-      if (profileData) {
+      if (profileData || userProfileRow) {
+        const displayName =
+          profileData?.display_name ||
+          profileData?.first_name ||
+          userProfileRow?.pseudo ||
+          user.email?.split('@')[0] ||
+          "Utilisateur";
         setUserProfile({
-          name: profileData.display_name || profileData.first_name || user.email?.split('@')[0] || "Utilisateur",
+          name: displayName,
           email: user.email || "",
-          phone: profileData.phone || "",
-          joinDate: new Date(profileData.created_at || user.created_at).toLocaleDateString('fr-FR', {
+          phone: profileData?.phone || userProfileRow?.phone || "",
+          joinDate: new Date(
+            profileData?.created_at || userProfileRow?.created_at || user.created_at
+          ).toLocaleDateString('fr-FR', {
             month: 'long',
             year: 'numeric'
           }),
           userType: 'client',
-          points: Math.floor(Math.random() * 3000) + 1000,
-          level: 'Ambassador ConsoGab',
-          scansCount: Math.floor(Math.random() * 50) + 10,
-          reviewsCount: Math.floor(Math.random() * 30) + 5,
-          favoritesCount: Math.floor(Math.random() * 20) + 3,
-          pseudo: profileData.display_name || "",
-          role: "",
-          avatar_url: profileData.avatar_url || undefined,
-          cover_image_url: profileData.cover_image_url || undefined,
-          avatar_updated_at: profileData.avatar_updated_at || undefined,
-          cover_updated_at: profileData.cover_updated_at || undefined
+          points: 0,
+          level: 'Membre ConsoGab',
+          scansCount: 0,
+          reviewsCount: 0,
+          favoritesCount: 0,
+          pseudo: userProfileRow?.pseudo || profileData?.display_name || "",
+          role: userProfileRow?.role || "",
+          avatar_url: profileData?.avatar_url || userProfileRow?.profile_picture_url || undefined,
+          cover_image_url: profileData?.cover_image_url || undefined,
+          avatar_updated_at: profileData?.avatar_updated_at || undefined,
+          cover_updated_at: profileData?.cover_updated_at || undefined
         });
       } else {
         // Créer un profil par défaut si n'existe pas
@@ -352,7 +373,12 @@ export const ProfilePage = ({
               <span>Messagerie</span>
             </Button>
             
-            <Button size="sm" variant="outline" className="gap-2 flex-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 flex-1"
+              onClick={() => setActiveTab('favorites')}
+            >
               <Star className="w-4 h-4" />
               <span>Favoris</span>
             </Button>

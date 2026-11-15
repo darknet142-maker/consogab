@@ -5,14 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, Globe, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Globe, Eye, EyeOff, UserCheck, ArrowLeft } from "lucide-react";
 import gabomaLogo from "@/assets/gaboma-logo.png";
 import { toast } from "sonner";
 
 const friendlyAuthError = (error: any, fallback: string) => {
   const msg = String(error?.message ?? '');
   if (error?.name === 'AuthRetryableFetchError' || /Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
-    return "Service momentanément indisponible. Utilisez « Entrer sans compte » en attendant.";
+    return "Service momentanément indisponible. Utilisez « Se connecter sans authentification » en attendant.";
   }
   return msg || fallback;
 };
@@ -28,12 +28,18 @@ interface AuthFlowPageProps {
 }
 
 export const AuthFlowPage = ({ onComplete }: AuthFlowPageProps) => {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, signInWithoutAuth } = useAuth();
   const navigate = useNavigate();
   const { cleanupAuthState } = useAuthCleanup();
   const [step, setStep] = useState<AuthStep>('welcome');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleGuestLogin = () => {
+    signInWithoutAuth();
+    navigate('/consumer/home', { replace: true });
+    onComplete();
+  };
   
   // Form states
   const [email, setEmail] = useState('');
@@ -148,14 +154,11 @@ export const AuthFlowPage = ({ onComplete }: AuthFlowPageProps) => {
                 <Button
                   type="button"
                   variant="secondary"
-                  className="w-full h-12 text-base"
-                  onClick={() => {
-                    try { localStorage.setItem('gb_prototype_access', 'true'); } catch {}
-                    navigate('/consumer/home', { replace: true });
-                    onComplete();
-                  }}
+                  className="w-full h-12 text-base font-medium gap-2"
+                  onClick={handleGuestLogin}
                 >
-                  Entrer sans compte
+                  <UserCheck className="h-5 w-5" />
+                  Se connecter sans authentification
                 </Button>
 
                 <Separator />
@@ -276,10 +279,20 @@ export const AuthFlowPage = ({ onComplete }: AuthFlowPageProps) => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
                     {isLoading ? "Connexion..." : "Se connecter"}
                   </Button>
                 </form>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full h-11 gap-2 font-medium"
+                  onClick={handleGuestLogin}
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Se connecter sans authentification
+                </Button>
 
                 <Separator />
 
@@ -335,6 +348,16 @@ export const AuthFlowPage = ({ onComplete }: AuthFlowPageProps) => {
                     Mot de passe oublié ?
                   </button>
                 </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full h-11 gap-2 text-muted-foreground"
+                  onClick={() => setStep('welcome')}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour à l'accueil
+                </Button>
               </CardContent>
             </Card>
           </div>

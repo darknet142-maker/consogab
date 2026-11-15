@@ -14,15 +14,15 @@ import { toast } from "sonner";
 
 export const ProductDetailPage = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { productId, id } = useParams<{ productId?: string; id?: string }>();
+  const resolvedProductId = productId || id;
   const { startBusinessConversation } = useStartConversation();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
 
-  const { data: product, isLoading, error } = useProduct(id);
+  const { data: product, isLoading, error } = useProduct(resolvedProductId);
 
   if (isLoading) {
     return (
@@ -76,11 +76,36 @@ export const ProductDetailPage = () => {
   };
 
   const handleAddToCart = () => {
-    toast.success("Produit ajouté au panier");
+    try {
+      const rawCart = localStorage.getItem("consogab_cart");
+      const cart: Array<{ productId: string; name: string; price: number; quantity: number; businessId?: string }> =
+        rawCart ? JSON.parse(rawCart) : [];
+      const unitPrice = isOnSale && salePrice ? salePrice : productData.price;
+      const existingIndex = cart.findIndex((item) => item.productId === productData.id);
+      if (existingIndex >= 0) {
+        cart[existingIndex].quantity += quantity;
+      } else {
+        cart.push({
+          productId: productData.id,
+          name: productData.name,
+          price: unitPrice,
+          quantity,
+          businessId: business?.id,
+        });
+      }
+      localStorage.setItem("consogab_cart", JSON.stringify(cart));
+      toast.success(`${quantity} × ${productData.name} ajouté au panier`);
+    } catch {
+      toast.error("Impossible d'ajouter ce produit au panier");
+    }
   };
 
   const handleFindNearby = () => {
-    toast.info("Fonctionnalité à venir");
+    if (business?.id) {
+      navigate(`/business/${business.id}`);
+    } else {
+      navigate("/consumer/map");
+    }
   };
 
   return (
@@ -229,7 +254,7 @@ export const ProductDetailPage = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => startBusinessConversation(business.id)}
+                    onClick={() => navigate(`/business/${business.id}`)}
                   >
                     Voir
                   </Button>
@@ -238,26 +263,9 @@ export const ProductDetailPage = () => {
             </Card>
           )}
 
-          {/* Sélection taille et quantité */}
+          {/* Sélection quantité */}
           <Card className="border-border/50">
             <CardContent className="p-4 space-y-4">
-              {/* Tailles - Placeholder car pas dans la DB pour l'instant */}
-              <div>
-                <h3 className="font-semibold mb-3">Sélectionner la taille</h3>
-                <div className="grid grid-cols-4 gap-2">
-                  {["S", "M", "L", "XL"].map((size) => (
-                    <Button
-                      key={size}
-                      variant={selectedSize === size ? "default" : "outline"}
-                      className={cn("h-12", selectedSize === size && "bg-primary text-primary-foreground")}
-                      onClick={() => setSelectedSize(size)}
-                    >
-                      {size}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
               {/* Quantité */}
               <div>
                 <h3 className="font-semibold mb-3">Quantité</h3>
@@ -267,6 +275,7 @@ export const ProductDetailPage = () => {
                     size="sm"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     disabled={quantity <= 1}
+                    aria-label="Diminuer la quantité"
                   >
                     <Minus className="w-4 h-4" />
                   </Button>
@@ -274,8 +283,9 @@ export const ProductDetailPage = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setQuantity(Math.min(stock, quantity + 1))}
-                    disabled={quantity >= stock}
+                    onClick={() => setQuantity(Math.min(Math.max(1, stock), quantity + 1))}
+                    disabled={stock > 0 && quantity >= stock}
+                    aria-label="Augmenter la quantité"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -289,7 +299,7 @@ export const ProductDetailPage = () => {
             <Button
               className="w-full bg-[hsl(var(--gaboma-green))] text-white hover:bg-[hsl(var(--gaboma-green))]/90 h-12"
               onClick={handleAddToCart}
-              disabled={!selectedSize || !isAvailable}
+              disabled={!isAvailable}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
               Ajouter au panier • {formatPrice((salePrice || productData.price) * quantity)}

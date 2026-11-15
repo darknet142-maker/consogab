@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useConversations } from '../hooks/useChatQueries';
 import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
 import { cn } from '@/lib/utils';
 
-export const ChatLayout: React.FC = () => {
+interface ChatLayoutProps {
+  initialConversationId?: string;
+}
+
+export const ChatLayout: React.FC<ChatLayoutProps> = ({ initialConversationId }) => {
   const { data: conversations = [], isLoading } = useConversations();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(initialConversationId ?? null);
+
+  useEffect(() => {
+    if (initialConversationId) {
+      setActiveId(initialConversationId);
+    }
+  }, [initialConversationId]);
 
   const activeConversation = conversations.find(c => c.id === activeId);
 

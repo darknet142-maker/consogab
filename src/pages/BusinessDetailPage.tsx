@@ -20,9 +20,11 @@ import { SleepModeToggle } from "@/components/business/SleepModeToggle";
 import { ReviewReplySection } from "@/components/reviews/ReviewReplySection";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { GUEST_USER_ID } from "@/features/auth/AuthContext";
 import { useProfileMode } from "@/hooks/use-profile-mode";
 import { useAuthCleanup } from "@/hooks/use-auth-cleanup";
 import { supabase } from "@/integrations/supabase/client";
+import { getDemoBusinessById } from "@/mocks/consoGabDemoData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ProfileModeSwitch } from "@/components/profile/ProfileModeSwitch";
@@ -138,66 +140,81 @@ export const BusinessDetailPage = () => {
   const coverLikes = useBusinessImageLikes(businessId || '', 'cover');
   useEffect(() => {
     fetchBusinessData();
-  }, [businessId, user]);
+  }, [businessId]);
   const fetchBusinessData = async () => {
-    if (!user || !businessId) {
+    if (!businessId) {
       setIsLoading(false);
       return;
     }
+
+    const applyBusinessRow = (data: any) => {
+      setBusiness({
+        ...defaultBusiness,
+        id: data.id,
+        name: data.business_name || 'Commerce sans nom',
+        type: data.business_category || 'Activité non spécifiée',
+        address: data.address ? `${data.address}${data.city ? ', ' + data.city : ''}` : data.city || 'Adresse non renseignée',
+        phone: data.phone || '',
+        whatsapp: data.whatsapp || undefined,
+        website: data.website || undefined,
+        email: data.email || undefined,
+        description: data.description || 'Aucune description disponible',
+        verified: Boolean(data.is_verified),
+        coordinates: {
+          lat: typeof data.latitude === 'number' ? data.latitude : defaultBusiness.coordinates.lat,
+          lng: typeof data.longitude === 'number' ? data.longitude : defaultBusiness.coordinates.lng,
+        },
+      });
+      setBusinessData({
+        isSleeping: data.is_sleeping || false,
+        isScheduledForDeletion: !!data.deactivation_scheduled_at,
+        deletionDate: data.deactivation_scheduled_at || null
+      });
+      setLogoUrl(data.logo_url || null);
+      setCoverUrl(data.cover_image_url || null);
+      setLogoUploadDate(data.logo_updated_at || null);
+      setCoverUploadDate(data.cover_updated_at || null);
+      setCarouselImages(Array.isArray(data.carousel_images) ? data.carousel_images as string[] : []);
+    };
+
+    const demoMatch = getDemoBusinessById(businessId);
+    if (user?.id === GUEST_USER_ID && demoMatch) {
+      applyBusinessRow(demoMatch);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       const {
         data,
         error
-      } = await supabase.from('business_profiles').select('id, business_name, business_category, address, phone, whatsapp, website, email, description, is_sleeping, deactivation_scheduled_at, is_deactivated, logo_url, cover_image_url, logo_updated_at, cover_updated_at, carousel_images').eq('id', businessId).single();
-      if (error) {
-        console.error('Erreur lors du chargement du profil business:', error);
-        toast.error("Impossible de charger le profil business");
+      } = await supabase.from('business_profiles').select('id, business_name, business_category, address, city, latitude, longitude, is_verified, phone, whatsapp, website, email, description, is_sleeping, deactivation_scheduled_at, is_deactivated, logo_url, cover_image_url, logo_updated_at, cover_updated_at, carousel_images').eq('id', businessId).single();
+      if (error || !data) {
+        if (demoMatch) {
+          applyBusinessRow(demoMatch);
+        } else {
+          console.error('Erreur lors du chargement du profil business:', error);
+          toast.error("Impossible de charger le profil business");
+        }
         setIsLoading(false);
         return;
       }
-      if (data) {
-        // Créer l'objet business avec les vraies données de la DB
-        setBusiness({
-          ...defaultBusiness,
-          id: data.id,
-          name: data.business_name || 'Commerce sans nom',
-          type: data.business_category || 'Activité non spécifiée',
-          address: data.address || 'Adresse non renseignée',
-          phone: data.phone || '',
-          whatsapp: data.whatsapp || undefined,
-          website: data.website || undefined,
-          email: data.email || undefined,
-          description: data.description || 'Aucune description disponible'
-        });
+      applyBusinessRow(data);
 
-        // Mettre à jour l'état d'activité
-        setBusinessData({
-          isSleeping: data.is_sleeping || false,
-          isScheduledForDeletion: !!data.deactivation_scheduled_at,
-          deletionDate: data.deactivation_scheduled_at
-        });
-
-        // Stocker les URLs des images
-        setLogoUrl(data.logo_url || null);
-        setCoverUrl(data.cover_image_url || null);
-        setLogoUploadDate(data.logo_updated_at || null);
-        setCoverUploadDate(data.cover_updated_at || null);
-        
-        // Charger les images du carrousel
-        const carouselData = Array.isArray(data.carousel_images) ? data.carousel_images as string[] : [];
-        setCarouselImages(carouselData);
-
-        // 📊 Track profile view
-        const { Analytics } = await import('@/services/analytics');
-        Analytics.trackProfileView(businessId, {
-          business_name: data.business_name,
-          business_category: data.business_category
-        });
-      }
+      // 📊 Track profile view
+      const { Analytics } = await import('@/services/analytics');
+      Analytics.trackProfileView(businessId, {
+        business_name: data.business_name,
+        business_category: data.business_category
+      });
     } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-      toast.error("Une erreur est survenue");
+      if (demoMatch) {
+        applyBusinessRow(demoMatch);
+      } else {
+        console.error('Erreur lors du chargement des données:', error);
+        toast.error("Une erreur est survenue");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -251,8 +268,22 @@ export const BusinessDetailPage = () => {
       window.open(`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`, '_blank');
     }
   };
-  if (!business) {
+  if (isLoading) {
     return <ProfilePageSkeleton />;
+  }
+  if (!business) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <Building2 className="w-12 h-12 text-muted-foreground mb-4" />
+        <h1 className="text-xl font-bold mb-2">Entreprise introuvable</h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          Ce commerce n'existe pas ou n'est plus accessible pour le moment.
+        </p>
+        <Button onClick={() => navigate("/consumer/home")}>
+          Retour à l'accueil
+        </Button>
+      </div>
+    );
   }
   return <PageWithSkeleton isLoading={isLoading} skeleton={<ProfilePageSkeleton />}>
       <div className="min-h-screen bg-background">

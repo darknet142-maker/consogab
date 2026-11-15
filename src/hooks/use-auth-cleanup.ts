@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export const useAuthCleanup = () => {
   const cleanupAuthState = () => {
     try {
+      localStorage.removeItem('gb_prototype_access');
+      localStorage.removeItem('consogab_guest_profile_mode_v1');
       // Nettoyer localStorage
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {

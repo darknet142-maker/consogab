@@ -16,7 +16,7 @@ interface StoriesCarouselProps {
   title?: string;
   showViewAll?: boolean;
   onViewAll?: () => void;
-  onStoryClick?: (storyId: string) => void;
+  onStoryClick?: (storyId: string, businessId?: string) => void;
 }
 
 export const StoriesCarousel = ({ 
@@ -111,7 +111,7 @@ export const StoriesCarousel = ({
           >
             <StoryCard 
               story={story} 
-              onClick={() => onStoryClick?.(story.id)}
+              onClick={() => onStoryClick?.(story.id, story.business_id)}
             />
           </div>
         ))}

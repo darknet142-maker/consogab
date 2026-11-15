@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LngLatBounds } from "maplibre-gl";
+import { getDemoBusinesses } from "@/mocks/consoGabDemoData";
 
 export interface MapBusiness {
   id: string;
@@ -77,8 +78,9 @@ export const useMapBusinesses = (options: UseMapBusinessesOptions = {}) => {
 
       setBusinesses((data || []).filter(b => b.latitude && b.longitude) as MapBusiness[]);
     } catch (err: any) {
-      console.error("Error fetching businesses:", err);
-      setError(err.message || "Erreur lors du chargement des entreprises");
+      console.error("Error fetching businesses, falling back to demo data:", err);
+      setBusinesses(getDemoBusinesses() as MapBusiness[]);
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -123,8 +125,9 @@ export const useMapBusinesses = (options: UseMapBusinessesOptions = {}) => {
 
         setBusinesses((data || []) as MapBusiness[]);
       } catch (err: any) {
-        console.error("Error fetching nearest businesses:", err);
-        setError(err.message || "Erreur lors du chargement des entreprises");
+        console.error("Error fetching nearest businesses, falling back to demo data:", err);
+        setBusinesses(getDemoBusinesses() as MapBusiness[]);
+        setError(null);
       } finally {
         setLoading(false);
       }

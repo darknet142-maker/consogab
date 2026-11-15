@@ -2,22 +2,30 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Catalog, CatalogInsert, CatalogUpdate } from "@/types/entities/catalog.types";
 import { useToast } from "@/hooks/use-toast";
+import { getDemoCatalogs, getDemoCatalogById } from "@/mocks/consoGabDemoData";
 
 export const useCatalogs = (businessId: string) => {
   return useQuery({
     queryKey: ['catalogs', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('catalogs')
-        .select('*')
-        .eq('business_id', businessId)
-        .eq('is_active', true) // Exclure les archivés
-        .neq('visibility', 'archived') // Double check
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('catalogs')
+          .select('*')
+          .eq('business_id', businessId)
+          .eq('is_active', true) // Exclure les archivés
+          .neq('visibility', 'archived') // Double check
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []) as Catalog[];
-    }
+        if (error) throw error;
+        if (data && data.length > 0) return data as Catalog[];
+        const demoFallback = getDemoCatalogs(businessId);
+        return demoFallback.length > 0 ? demoFallback : ([] as Catalog[]);
+      } catch {
+        return getDemoCatalogs(businessId);
+      }
+    },
+    enabled: !!businessId
   });
 };
 
@@ -25,14 +33,20 @@ export const useCatalog = (catalogId: string) => {
   return useQuery({
     queryKey: ['catalog', catalogId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('catalogs')
-        .select('*')
-        .eq('id', catalogId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('catalogs')
+          .select('*')
+          .eq('id', catalogId)
+          .single();
 
-      if (error) throw error;
-      return data as Catalog;
+        if (error) throw error;
+        return data as Catalog;
+      } catch {
+        const demo = getDemoCatalogById(catalogId);
+        if (!demo) throw new Error('Catalogue introuvable');
+        return demo;
+      }
     },
     enabled: !!catalogId
   });
@@ -223,9 +237,14 @@ export const usePublicCatalogs = (filters?: { search?: string; city?: string; ca
       // For now, let's just return raw data and let the component filter or refactor to proper join filter later.
       // Actually, let's keep it simple as in the original page.
       
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await query;
+        if (error) throw error;
+        if (data && data.length > 0) return data;
+        return getDemoCatalogs();
+      } catch {
+        return getDemoCatalogs();
+      }
     }
   });
 };

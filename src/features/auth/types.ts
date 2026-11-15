@@ -83,6 +83,7 @@ export interface AuthState {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  isGuest?: boolean;
   loading: boolean;
   initialized: boolean;
 }
@@ -91,6 +92,7 @@ export interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signUp: (email: string, password: string, userData: UserSignUpData) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  signInWithoutAuth: () => void;
   resetPassword: (email: string) => Promise<ResetPasswordResult>;
   refreshProfile: () => Promise<void>;
 }

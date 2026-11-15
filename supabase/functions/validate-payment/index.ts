@@ -26,12 +26,21 @@ serve(async (req) => {
     );
 
     // Get user from JWT
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header missing' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const body = await req.json();
@@ -70,16 +79,19 @@ serve(async (req) => {
       throw new Error('Not authorized to validate this payment');
     }
 
-    // Verify PIN if provided (simplified - in production, hash and compare)
-    if (pin_hash) {
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('pin_hash, pin_enabled')
-        .eq('user_id', user.id)
-        .single();
+    // Always check if the seller has PIN protection enabled (prevent PIN bypass by omitting pin_hash)
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('pin_hash, pin_enabled')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-      if (profile?.pin_enabled && profile.pin_hash !== pin_hash) {
-        throw new Error('Invalid PIN');
+    if (profile?.pin_enabled) {
+      if (!pin_hash || profile.pin_hash !== pin_hash) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or missing PIN' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 

@@ -22,6 +22,7 @@ export interface PerformanceMetric {
 }
 
 class ErrorTracker {
+  private static readonly MAX_QUEUE_SIZE = 50;
   private enabled: boolean = true;
   private errorQueue: Array<{ error: Error; context: ErrorContext }> = [];
   private performanceMetrics: PerformanceMetric[] = [];
@@ -46,6 +47,9 @@ class ErrorTracker {
     
     console.error('[ErrorTracker]', errorName, errorMessage);
 
+    if (this.errorQueue.length >= ErrorTracker.MAX_QUEUE_SIZE) {
+      this.errorQueue.shift();
+    }
     this.errorQueue.push({ error, context: fullContext });
 
     // Log vers la console en développement
@@ -68,6 +72,9 @@ class ErrorTracker {
   trackPerformance(metric: PerformanceMetric) {
     if (!this.enabled) return;
 
+    if (this.performanceMetrics.length >= ErrorTracker.MAX_QUEUE_SIZE) {
+      this.performanceMetrics.shift();
+    }
     this.performanceMetrics.push(metric);
 
     if (import.meta.env.DEV) {

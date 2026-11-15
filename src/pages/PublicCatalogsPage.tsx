@@ -17,7 +17,7 @@ export const PublicCatalogsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const { data: catalogs, isLoading } = usePublicCatalogs({ search: searchQuery });
+  const { data: catalogs, isLoading } = usePublicCatalogs();
 
   // Client-side filtering for city and category 
   // (Ideally this should be server-side but keeping logic similar to original for now)

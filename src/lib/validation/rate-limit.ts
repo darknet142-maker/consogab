@@ -19,9 +19,6 @@ class RateLimiter {
     this.storage = new Map();
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
-    
-    // Cleanup ancien entries toutes les 5 minutes
-    setInterval(() => this.cleanup(), 5 * 60 * 1000);
   }
 
   /**
@@ -30,6 +27,9 @@ class RateLimiter {
    * @returns true si autorisé, false si rate limit dépassé
    */
   check(identifier: string): boolean {
+    if (this.storage.size > 100) {
+      this.cleanup();
+    }
     const now = Date.now();
     const entry = this.storage.get(identifier);
 

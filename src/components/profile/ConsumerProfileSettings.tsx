@@ -10,6 +10,7 @@ import { User, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth";
+import { GUEST_USER_ID } from "@/features/auth/AuthContext";
 
 export const ConsumerProfileSettings = () => {
   const { user } = useAuth();
@@ -26,7 +27,15 @@ export const ConsumerProfileSettings = () => {
   }, [user?.id]);
 
   const fetchProfileData = async () => {
-    if (!user?.id) return;
+    if (!user?.id || user.id === GUEST_USER_ID) {
+      setData({
+        display_name: 'Invité ConsoGab',
+        avatar_url: '',
+        bio: 'Session ouverte sans authentification'
+      });
+      setLoadingData(false);
+      return;
+    }
     
     try {
       const { data: profileData, error } = await supabase
@@ -54,6 +63,10 @@ export const ConsumerProfileSettings = () => {
 
   const handleSave = async () => {
     if (!user?.id) return;
+    if (user.id === GUEST_USER_ID) {
+      toast.info("Connectez-vous avec un compte pour enregistrer vos modifications sur le serveur.");
+      return;
+    }
     
     setLoading(true);
     try {

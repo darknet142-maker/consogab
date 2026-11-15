@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserLocation } from './use-user-location';
+import { getDemoBusinesses, getDemoCatalogs, getDemoProducts } from "@/mocks/consoGabDemoData";
 
 // Fonction pour calculer la distance entre deux points (Haversine)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -78,11 +79,27 @@ export const useUnifiedSearch = () => {
         businessQuery = businessQuery.or(`city.ilike.%${filters.location}%,quartier.ilike.%${filters.location}%,department.ilike.%${filters.location}%`);
       }
 
-      const { data: allBusinesses } = await businessQuery;
+      const { data: allBusinesses, error: bizError } = await businessQuery;
+      if (bizError) throw bizError;
+
+      const sourceBusinesses =
+        allBusinesses && allBusinesses.length > 0
+          ? allBusinesses
+          : getDemoBusinesses().filter((b) => {
+              if (filters?.verified && !b.is_verified) return false;
+              if (filters?.category && b.business_category !== filters.category) return false;
+              if (
+                filters?.location &&
+                !`${b.city} ${b.quartier}`.toLowerCase().includes(filters.location.toLowerCase())
+              ) {
+                return false;
+              }
+              return true;
+            });
 
       const businessResults: SearchResult[] = [];
       
-      allBusinesses?.forEach((business: any) => {
+      sourceBusinesses.forEach((business: any) => {
         let score = 0;
         
         // Recherche dans le nom de l'entreprise
@@ -143,8 +160,33 @@ export const useUnifiedSearch = () => {
       return businessResults.filter(item => item.score > 0);
       
     } catch (error) {
-      console.error('Error searching businesses:', error);
-      return [];
+      console.error('Error searching businesses, using demo fallback:', error);
+      const searchTerm = query.toLowerCase().trim();
+      return getDemoBusinesses()
+        .filter((b) => {
+          if (filters?.verified && !b.is_verified) return false;
+          if (filters?.category && b.business_category !== filters.category) return false;
+          return (
+            b.business_name.toLowerCase().includes(searchTerm) ||
+            b.description.toLowerCase().includes(searchTerm) ||
+            b.address.toLowerCase().includes(searchTerm) ||
+            b.city.toLowerCase().includes(searchTerm)
+          );
+        })
+        .map((b) => ({
+          id: b.id,
+          name: b.business_name,
+          type: 'business' as const,
+          title: b.business_name,
+          description: b.description,
+          category: b.business_category,
+          address: `${b.address}, ${b.city}`,
+          verified: b.is_verified,
+          score: 80,
+          businessId: b.id,
+          latitude: b.latitude,
+          longitude: b.longitude,
+        }));
     }
   }, []);
 
@@ -171,7 +213,10 @@ export const useUnifiedSearch = () => {
 
       if (catalogError) throw catalogError;
 
-      return catalogs?.map((catalog: any) => {
+      const sourceCatalogs =
+        catalogs && catalogs.length > 0 ? catalogs : getDemoCatalogs();
+
+      return sourceCatalogs.map((catalog: any) => {
         let score = 0;
         
         if (catalog.name?.toLowerCase().includes(searchTerm)) {
@@ -215,8 +260,27 @@ export const useUnifiedSearch = () => {
       }).filter((item: SearchResult) => item.score > 0) || [];
       
     } catch (error) {
-      console.error('Error searching catalogs:', error);
-      return [];
+      console.error('Error searching catalogs, using demo fallback:', error);
+      const searchTerm = query.toLowerCase().trim();
+      return getDemoCatalogs()
+        .filter(
+          (c) =>
+            c.name.toLowerCase().includes(searchTerm) ||
+            (c.description || '').toLowerCase().includes(searchTerm) ||
+            (c.keywords || []).some((k) => k.toLowerCase().includes(searchTerm))
+        )
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          type: 'catalog' as const,
+          title: c.name,
+          description: c.description || undefined,
+          category: c.category || undefined,
+          verified: true,
+          score: 70,
+          businessId: c.business_id,
+          catalogId: c.id,
+        }));
     }
   }, []);
 
@@ -241,7 +305,10 @@ export const useUnifiedSearch = () => {
 
       if (productError) throw productError;
 
-      return products?.map((product: any) => {
+      const sourceProducts =
+        products && products.length > 0 ? products : getDemoProducts();
+
+      return sourceProducts.map((product: any) => {
         let score = 0;
         
         if (product.name?.toLowerCase().includes(searchTerm)) {
@@ -277,8 +344,29 @@ export const useUnifiedSearch = () => {
       }).filter((item: SearchResult) => item.score > 0) || [];
       
     } catch (error) {
-      console.error('Error searching products:', error);
-      return [];
+      console.error('Error searching products, using demo fallback:', error);
+      const searchTerm = query.toLowerCase().trim();
+      return getDemoProducts()
+        .filter(
+          (p) =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            (p.description || '').toLowerCase().includes(searchTerm) ||
+            (p.tags || []).some((t) => t.toLowerCase().includes(searchTerm))
+        )
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          type: 'product' as const,
+          title: p.name,
+          description: p.description || undefined,
+          category: p.category || undefined,
+          verified: p.business?.is_verified,
+          score: 75,
+          businessId: p.business_id,
+          catalogId: p.catalog_id || undefined,
+          latitude: p.business?.latitude,
+          longitude: p.business?.longitude,
+        }));
     }
   }, []);
 

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { GeoPosition } from '@/features/geolocation/types';
+import { getDemoBusinesses } from '@/mocks/consoGabDemoData';
 
 export interface GeoItem {
   id: string;
@@ -48,10 +49,10 @@ export class GeoLocationService {
     // Élargir progressivement le rayon jusqu'à avoir suffisamment de résultats
     while (results.length < opts.minResults && currentRadius <= maxRadiusMeters) {
       try {
-        // La fonction RPC attend: lat, lng, radius_meters, limit_count
+        // La fonction RPC attend: user_lat, user_lng, radius_meters, limit_count
         const { data, error } = await (supabase as any).rpc('get_nearest_businesses', {
-          lat: userPosition.latitude,
-          lng: userPosition.longitude,
+          user_lat: userPosition.latitude,
+          user_lng: userPosition.longitude,
           radius_meters: Math.round(currentRadius),
           limit_count: opts.limit
         });
@@ -59,32 +60,78 @@ export class GeoLocationService {
         if (error) {
           console.error('RPC Error:', error);
           // Fallback: requête directe sans géolocalisation
-          const { data: fallbackData } = await supabase
+          const { data: fallbackData, error: fallbackError } = await supabase
             .from('business_profiles')
             .select('*')
             .eq('is_active', true)
             .eq('is_sleeping', false)
             .order('created_at', { ascending: false })
             .limit(opts.limit);
-          
-          results = (fallbackData || []).map(b => ({
-            ...b,
-            distance_meters: 0
-          }));
+
+          if (fallbackError || !fallbackData || fallbackData.length === 0) {
+            results = getDemoBusinesses().map((b) => ({
+              ...b,
+              distance_meters:
+                this.calculateDistance(
+                  userPosition.latitude,
+                  userPosition.longitude,
+                  b.latitude,
+                  b.longitude
+                ) * 1000,
+            }));
+          } else {
+            results = fallbackData.map((b) => ({
+              ...b,
+              distance_meters:
+                b.latitude && b.longitude
+                  ? this.calculateDistance(
+                      userPosition.latitude,
+                      userPosition.longitude,
+                      b.latitude,
+                      b.longitude
+                    ) * 1000
+                  : 0,
+            }));
+          }
           break;
         }
 
         results = data || [];
 
-        // Si on a assez de résultats, arrêter
-        if (results.length >= opts.minResults) break;
+        // Si on a assez de résultats ou qu'on a déjà atteint le rayon maximum, arrêter
+        if (results.length >= opts.minResults || currentRadius >= maxRadiusMeters) {
+          break;
+        }
 
-        // Sinon, doubler le rayon
+        // Sinon, doubler le rayon sans dépasser maxRadiusMeters
         currentRadius = Math.min(currentRadius * 2, maxRadiusMeters);
       } catch (error) {
         console.error('Erreur lors de la récupération des entreprises:', error);
+        results = getDemoBusinesses().map((b) => ({
+          ...b,
+          distance_meters:
+            this.calculateDistance(
+              userPosition.latitude,
+              userPosition.longitude,
+              b.latitude,
+              b.longitude
+            ) * 1000,
+        }));
         break;
       }
+    }
+
+    if (results.length === 0) {
+      results = getDemoBusinesses().map((b) => ({
+        ...b,
+        distance_meters:
+          this.calculateDistance(
+            userPosition.latitude,
+            userPosition.longitude,
+            b.latitude,
+            b.longitude
+          ) * 1000,
+      }));
     }
 
     // Transformer en recommandations avec distance formatée

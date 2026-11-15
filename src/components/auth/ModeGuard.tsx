@@ -24,23 +24,26 @@ export const ModeGuard = ({ children }: ModeGuardProps) => {
 
     // Règles de navigation strictes pour séparation Consumer ↔ Business
     if (currentMode === 'business') {
-      // En mode Business: interdire l'accès aux routes consommateur
-      if (path.startsWith('/consumer') || path === '/home' || path === '/entreprises') {
-        // Exception: permettre la gestion des entreprises pour basculer de mode
+      if (!currentBusinessId) {
         if (!path.startsWith('/entreprises')) {
-          target = `/business/${currentBusinessId}/dashboard`;
+          target = '/entreprises';
+        }
+      } else {
+        // En mode Business: interdire l'accès aux routes consommateur
+        if (path.startsWith('/consumer') || path === '/home') {
+          target = `/business/${currentBusinessId}/profile`;
+        }
+
+        // Vérifier que l'utilisateur accède uniquement à SON business sur les routes d'administration
+        const businessAdminMatch = path.match(/^\/business\/([^/]+)\/(dashboard|profile|settings|catalogues)/);
+        if (businessAdminMatch && businessAdminMatch[1] !== currentBusinessId) {
+          guardLogger.warn('Tentative d\'accès à l\'administration d\'un autre business');
+          target = `/business/${currentBusinessId}/profile`;
         }
       }
-      
-      // Vérifier que l'utilisateur accède uniquement à SON business
-      const businessIdMatch = path.match(/^\/business\/([^/]+)/);
-      if (businessIdMatch && businessIdMatch[1] !== currentBusinessId) {
-        guardLogger.warn('Tentative d\'accès à un autre business');
-        target = `/business/${currentBusinessId}/dashboard`;
-      }
     } else {
-      // Mode Consommateur: autoriser l'accès public aux business mais pas aux zones pro
-      const businessSettingsMatch = path.match(/^\/business\/([^/]+)\/(dashboard|settings)/);
+      // Mode Consommateur: autoriser l'accès public aux business (/business/:id) mais pas aux zones pro
+      const businessSettingsMatch = path.match(/^\/business\/([^/]+)\/(dashboard|profile|settings|catalogues)/);
       if (businessSettingsMatch) {
         guardLogger.warn('Tentative d\'accès aux zones privées business en mode consommateur');
         target = '/consumer/home';

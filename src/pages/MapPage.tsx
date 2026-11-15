@@ -53,7 +53,7 @@ export const MapPage = ({
   }, [setCurrentBounds]);
 
   const handleBusinessClick = useCallback((business: MapBusiness) => {
-    navigate(`/business/${business.id}/profile`);
+    navigate(`/business/${business.id}`);
   }, [navigate]);
   return <PageWithSkeleton isLoading={loading} skeleton={<MapPageSkeleton />}>
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex flex-col">
@@ -98,7 +98,7 @@ export const MapPage = ({
             
             <TabsContent value="map" className="h-full m-0 relative">
               <MapLibreView
-                initialCenter={[userLocation.longitude, userLocation.latitude]}
+                initialCenter={userLocation ? [userLocation.longitude, userLocation.latitude] : undefined}
                 initialZoom={13}
                 onMapLoad={handleMapLoad}
                 onMoveEnd={handleMoveEnd}

@@ -1,8 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/features/auth';
+import { GUEST_USER_ID } from '@/features/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { createDomainLogger } from '@/lib/logger';
+import { getDemoBusinesses } from '@/mocks/consoGabDemoData';
+
+const GUEST_MODE_STORAGE_KEY = 'consogab_guest_profile_mode_v1';
+const GUEST_MODE_EVENT = 'consogab-guest-mode-change';
+
+function getGuestDemoProfiles(): BusinessProfile[] {
+  return getDemoBusinesses()
+    .filter((b) => b.user_id === GUEST_USER_ID)
+    .map((b) => ({
+      id: b.id,
+      business_name: b.business_name,
+      logo_url: b.logo_url,
+      is_primary: b.is_primary,
+      role: 'owner',
+      is_owner: true,
+    }));
+}
+
+function readGuestModeState(): { mode: ProfileMode; businessId: string | null } {
+  try {
+    const raw = localStorage.getItem(GUEST_MODE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        mode: parsed.mode === 'business' ? 'business' : 'consumer',
+        businessId: parsed.businessId || null,
+      };
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return { mode: 'consumer', businessId: null };
+}
 
 export type ProfileMode = 'consumer' | 'business';
 
@@ -154,6 +188,28 @@ export const useProfileMode = () => {
       return;
     }
 
+    if (user.id === GUEST_USER_ID) {
+      const guestState = readGuestModeState();
+      setCurrentMode(guestState.mode);
+      setCurrentBusinessId(guestState.businessId);
+      setBusinessProfiles(getGuestDemoProfiles());
+      setLoading(false);
+      setInitialized(true);
+
+      const handleGuestModeSync = (event: Event) => {
+        const customEvent = event as CustomEvent<{ mode: ProfileMode; businessId: string | null }>;
+        if (customEvent.detail) {
+          setCurrentMode(customEvent.detail.mode);
+          setCurrentBusinessId(customEvent.detail.businessId);
+        }
+      };
+
+      window.addEventListener(GUEST_MODE_EVENT, handleGuestModeSync);
+      return () => {
+        window.removeEventListener(GUEST_MODE_EVENT, handleGuestModeSync);
+      };
+    }
+
     if (initialized) return; // Éviter les initialisations multiples
 
     const initializeUserProfile = async () => {
@@ -226,6 +282,42 @@ export const useProfileMode = () => {
   const switchMode = async (mode: ProfileMode, businessId?: string, callback?: () => void) => {
     if (!user) {
       toast.error("Vous devez être connecté pour changer de mode");
+      return;
+    }
+
+    if (user.id === GUEST_USER_ID) {
+      const nextBusinessId = mode === 'business' ? (businessId || null) : null;
+      if (mode === 'business' && nextBusinessId) {
+        const business = businessProfiles.find((bp) => bp.id === nextBusinessId);
+        if (!business) {
+          toast.error("Profil business non accessible");
+          return;
+        }
+      }
+      try {
+        localStorage.setItem(
+          GUEST_MODE_STORAGE_KEY,
+          JSON.stringify({ mode, businessId: nextBusinessId })
+        );
+      } catch {
+        // Ignore storage errors
+      }
+      setCurrentMode(mode);
+      setCurrentBusinessId(nextBusinessId);
+      window.dispatchEvent(
+        new CustomEvent(GUEST_MODE_EVENT, {
+          detail: { mode, businessId: nextBusinessId },
+        })
+      );
+      const businessName = nextBusinessId
+        ? businessProfiles.find((bp) => bp.id === nextBusinessId)?.business_name
+        : '';
+      toast.success(
+        mode === 'business'
+          ? `Vous êtes maintenant en mode ${businessName}`
+          : 'Vous êtes maintenant en mode consommateur'
+      );
+      callback?.();
       return;
     }
 

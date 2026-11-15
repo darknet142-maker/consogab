@@ -7,9 +7,9 @@ import { ModeGuard } from "@/components/auth/ModeGuard";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { SplashScreen } from "@/pages/SplashScreen";
 import ConsumerApp from "@/pages/ConsumerApp";
-import { ProductDetailPage } from "@/pages/ProductDetailPage";
 import { GeoLocationProvider } from "@/features/geolocation/GeoContext";
 
 // Lazy loaded pages pour code splitting
@@ -22,11 +22,10 @@ import {
   LazyCreateCatalog,
   LazyPublicCatalogs,
   LazyEntreprisesPage,
-  LazyCategoryPage
+  LazyCategoryPage,
+  LazyBusinessDetailPage,
+  LazyProductDetailPage
 } from "@/lib/performance/lazy-components";
-
-// Pages Business légères (gardées normales)
-import { BusinessDetailPage } from "@/pages/BusinessDetailPage";
 
 // Pages Auth
 import { AuthFlowPage } from "@/pages/AuthFlowPage";
@@ -71,9 +70,10 @@ const App = () => {
                   <Route path="/entreprises/create" element={<LazyBusinessCreation />} />
                   
                   {/* Routes Business publiques (accessibles à tous) */}
-                  <Route path="/business/:businessId" element={<BusinessDetailPage />} />
+                  <Route path="/business/:businessId" element={<LazyBusinessDetailPage />} />
                   
                   {/* Routes Business privées (mode business uniquement) */}
+                  <Route path="/business/:businessId/dashboard" element={<LazyBusinessProfile />} />
                   <Route path="/business/:businessId/settings" element={<LazyBusinessSettings />} />
                   <Route path="/business/:businessId/profile" element={<LazyBusinessProfile />} />
                   <Route path="/business/:businessId/catalogues" element={<LazyCreateCatalog />} />
@@ -88,7 +88,7 @@ const App = () => {
                   <Route path="/catalogs" element={<LazyPublicCatalogs />} />
                   
                   {/* Routes produits */}
-                  <Route path="/product/:productId" element={<ProductDetailPage />} />
+                  <Route path="/product/:productId" element={<LazyProductDetailPage />} />
                   
                   {/* Routes Messagerie */}
                   <Route path="/messaging" element={<LazyMessagingPage />} />
@@ -103,6 +103,7 @@ const App = () => {
                   <Route path="*" element={<Navigate to="/consumer/home" replace />} />
                     </Routes>
                     <Toaster />
+                    <Sonner position="top-center" richColors closeButton />
                   </ModeGuard>
                 </RoleBasedRouter>
               </Router>

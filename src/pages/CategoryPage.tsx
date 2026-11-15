@@ -57,8 +57,8 @@ const CategoryPage = () => {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   
   useEffect(() => {
-    // Get user location from localStorage
-    const savedLocation = localStorage.getItem('user_location');
+    // Récupérer la position sauvegardée par GeoContext ('gaboma_last_position') ou fallback 'user_location'
+    const savedLocation = localStorage.getItem('gaboma_last_position') || localStorage.getItem('user_location');
     if (savedLocation) {
       try {
         setUserLocation(JSON.parse(savedLocation));

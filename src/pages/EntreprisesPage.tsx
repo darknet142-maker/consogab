@@ -18,7 +18,7 @@ export const EntreprisesPage = () => {
   const handleSwitchToBusiness = async (businessId: string) => {
     try {
       await switchMode('business', businessId, () => {
-        navigate(`/business/${businessId}`);
+        navigate(`/business/${businessId}/profile`);
         toast.success("Basculé en mode Business");
       });
     } catch (error) {
@@ -27,7 +27,7 @@ export const EntreprisesPage = () => {
   };
 
   const handleQuit = () => {
-    navigate('/profil?tab=entreprises');
+    navigate('/consumer/profile?tab=businesses');
   };
 
   return (

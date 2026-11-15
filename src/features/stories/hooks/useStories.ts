@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BusinessStory, StoryInsert, StoryUpdate } from "../types";
 import { toast } from "sonner";
+import { getDemoStories } from "@/mocks/consoGabDemoData";
 
 // Fetch public active stories (non expirées)
 export const usePublicStories = (options?: {
@@ -16,42 +17,55 @@ export const usePublicStories = (options?: {
   return useQuery({
     queryKey: ['public-stories', options],
     queryFn: async () => {
-      let query = (supabase as any)
-        .from('business_stories')
-        .select(`
-          *,
-          business_profiles (
-            id,
-            business_name,
-            logo_url,
-            business_category,
-            city,
-            quartier
-          )
-        `)
-        .eq('is_active', true)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
+      try {
+        let query = (supabase as any)
+          .from('business_stories')
+          .select(`
+            *,
+            business_profiles (
+              id,
+              business_name,
+              logo_url,
+              business_category,
+              city,
+              quartier
+            )
+          `)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
 
-      if (options?.city) {
-        query = query.eq('geo_city', options.city);
-      }
-      
-      if (options?.storyType) {
-        query = query.eq('story_type', options.storyType);
-      }
+        if (options?.city) {
+          query = query.eq('geo_city', options.city);
+        }
+        
+        if (options?.storyType) {
+          query = query.eq('story_type', options.storyType);
+        }
 
-      if (options?.limit) {
-        query = query.limit(options.limit);
-      }
+        if (options?.limit) {
+          query = query.limit(options.limit);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      return (data || []).map((story: any) => ({
-        ...story,
-        images: Array.isArray(story.images) ? story.images : []
-      })) as BusinessStory[];
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        const stories = (data || []).map((story: any) => ({
+          ...story,
+          images: Array.isArray(story.images) ? story.images : []
+        })) as BusinessStory[];
+
+        return stories.length > 0 ? stories : getDemoStories().slice(0, options?.limit);
+      } catch {
+        let demo = getDemoStories();
+        if (options?.city) {
+          demo = demo.filter((s) => s.geo_city === options.city);
+        }
+        if (options?.storyType) {
+          demo = demo.filter((s) => s.story_type === options.storyType);
+        }
+        return options?.limit ? demo.slice(0, options.limit) : demo;
+      }
     },
     refetchInterval: 60000 // Refetch every minute to check expiry
   });
@@ -62,18 +76,24 @@ export const useBusinessStories = (businessId: string) => {
   return useQuery({
     queryKey: ['business-stories', businessId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('business_stories')
-        .select('*')
-        .eq('business_id', businessId)
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await (supabase as any)
+          .from('business_stories')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      return (data || []).map((story: any) => ({
-        ...story,
-        images: Array.isArray(story.images) ? story.images : []
-      })) as BusinessStory[];
+        if (error) throw error;
+        
+        const stories = (data || []).map((story: any) => ({
+          ...story,
+          images: Array.isArray(story.images) ? story.images : []
+        })) as BusinessStory[];
+
+        return stories.length > 0 ? stories : getDemoStories(businessId);
+      } catch {
+        return getDemoStories(businessId);
+      }
     },
     enabled: !!businessId
   });
